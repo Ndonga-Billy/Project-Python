@@ -1,0 +1,55 @@
+import random
+
+def indice(mot_correct, tentative):
+    if len(tentative) < len(mot_correct):
+        print("Indice : le mot est plus long.")
+    elif len(tentative) > len(mot_correct):
+        print("Indice : le mot est plus court.")
+    
+    if tentative and mot_correct.startswith(tentative[0]):
+        print("Indice : le mot commence par la même lettre.")
+    
+    lettres_communes = len(set(tentative) & set(mot_correct))
+    print(f"Indice : {lettres_communes} lettre(s) en commun.")
+
+def crack_me():
+    mots_de_passe_faibles = [
+        "123456", "password", "admin", "123456789", "qwerty",
+        "abc123", "letmein", "welcome", "monkey", "football"
+    ]
+
+    mot_secret = random.choice(mots_de_passe_faibles)
+    tentatives = []
+    
+    print("Bienvenue dans le jeu CrackMe !")
+    max_essais = input("Nombre maximal d'essais (laisser vide pour illimité) : ")
+    max_essais = int(max_essais) if max_essais.isdigit() else None
+
+    triche = input("Souhaitez-vous activer le mode triche ? (o/n) : ").lower() == 'o'
+    if triche:
+        print(f"[TRICHE] Mot de passe = {mot_secret}")
+
+    compteur = 0
+
+    while True:
+        essai = input("Entrez votre proposition : ").strip()
+        tentatives.append(essai)
+        compteur += 1
+
+        if essai == mot_secret:
+            print(f"Bravo ! Vous avez trouvé le mot de passe en {compteur} tentative(s).")
+            break
+        else:
+            print("Mot incorrect.")
+            indice(mot_secret, essai)
+
+        if max_essais and compteur >= max_essais:
+            print("Nombre maximal d’essais atteint. Échec.")
+            break
+
+    print("\nHistorique des tentatives :")
+    for i, t in enumerate(tentatives, 1):
+        print(f"{i}. {t}")
+
+if __name__ == "__main__":
+    crack_me()
