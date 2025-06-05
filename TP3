@@ -1,0 +1,69 @@
+import pandas as pd
+import matplotlib.pyplot as plt
+import re
+
+def parse_apache_log_line(line):
+    # Regex pour extraire les champs clés du log Apache
+    log_pattern = re.compile(
+        r'(?P<ip>\d+\.\d+\.\d+\.\d+) - - \[(?P<datetime>[^\]]+)\] "(?P<method>[A-Z]+) (?P<url>[^ ]+) HTTP/[0-9.]+" (?P<status>\d{3}) .*?"(?P<user_agent>[^"]+)"'
+    )
+    match = log_pattern.search(line)
+    if match:
+        return match.groupdict()
+    return None
+
+def load_log_file(filepath):
+    records = []
+    with open(filepath, 'r') as file:
+        for line in file:
+            parsed = parse_apache_log_line(line)
+            if parsed:
+                records.append(parsed)
+    df = pd.DataFrame(records)
+    df['status'] = df['status'].astype(int)
+    return df
+
+def filter_404(df):
+    return df[df['status'] == 404]
+
+def top_5_ips(df_404):
+    return df_404['ip'].value_counts().head(5)
+
+def plot_top_5(ip_counts):
+    ip_counts.plot(kind='bar', color='tomato')
+    plt.title("Top 5 IPs générant des erreurs 404")
+    plt.xlabel("Adresse IP")
+    plt.ylabel("Nombre d'erreurs 404")
+    plt.xticks(rotation=45)
+    plt.tight_layout()
+    plt.show()
+
+def detect_bots(df_404):
+    bot_keywords = ['bot', 'crawler', 'spider']
+    mask = df_404['user_agent'].str.contains('|'.join(bot_keywords), case=False, na=False)
+    bot_ips = df_404[mask]['ip'].value_counts()
+    percent_bots = 100 * len(df_404[mask]) / len(df_404) if len(df_404) > 0 else 0
+    return bot_ips, percent_bots
+
+def main():
+    file_path = 'access.log'  # Remplace par le vrai chemin
+    df = load_log_file(file_path)
+    print("Chargement terminé. Aperçu :")
+    print(df.head())
+
+    df_404 = filter_404(df)
+    print(f"\nNombre total d'erreurs 404 : {len(df_404)}")
+
+    top_ips = top_5_ips(df_404)
+    print("\nTop 5 IPs générant des erreurs 404 :")
+    print(top_ips)
+
+    plot_top_5(top_ips)
+
+    bots, percent = detect_bots(df_404)
+    print(f"\nPourcentage des erreurs 404 générées par des bots : {percent:.2f}%")
+    print("IPs de bots détectées :")
+    print(bots)
+
+if __name__ == "__main__":
+    main()
