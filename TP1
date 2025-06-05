@@ -1,0 +1,64 @@
+import re
+import collections
+import matplotlib.pyplot as plt
+import csv
+
+def extract_ips(filepath, keyword):
+    ip_pattern = re.compile(r'(\d{1,3}\.){3}\d{1,3}')
+    ip_list = []
+
+    with open(filepath, 'r') as file:
+        for line in file:
+            if keyword in line:
+                match = ip_pattern.search(line)
+                if match:
+                    ip_list.append(match.group())
+
+    return ip_list
+
+def count_ips(ip_list):
+    return collections.Counter(ip_list)
+
+def plot_top_ips(counter, title, top_n=5):
+    most_common = counter.most_common(top_n)
+    ips = [item[0] for item in most_common]
+    counts = [item[1] for item in most_common]
+
+    plt.figure()
+    plt.bar(ips, counts, color='orange')
+    plt.title(title)
+    plt.xlabel("Adresse IP")
+    plt.ylabel("Nombre de tentatives")
+    plt.xticks(rotation=45)
+    plt.tight_layout()
+    plt.show()
+
+def export_to_csv(counter, filename):
+    with open(filename, 'w', newline='') as f:
+        writer = csv.writer(f)
+        writer.writerow(['IP', 'Tentatives'])
+        for ip, count in counter.items():
+            writer.writerow([ip, count])
+
+def main():
+    log_path = 'auth.log'  # Modifier avec le chemin réel
+    failed_ips = extract_ips(log_path, "Failed password")
+    failed_counter = count_ips(failed_ips)
+
+    print("Top 5 IPs ayant échoué :")
+    for ip, count in failed_counter.most_common(5):
+        print(f"{ip} - {count} tentatives")
+
+    plot_top_ips(failed_counter, "Top 5 IPs - Connexions échouées SSH")
+    export_to_csv(failed_counter, "failed_ips.csv")
+
+    # Bonus : connexions réussies
+    success_ips = extract_ips(log_path, "Accepted password")
+    success_counter = count_ips(success_ips)
+
+    print("\nBonus : IPs avec connexions réussies")
+    for ip, count in success_counter.most_common(5):
+        print(f"{ip} - {count} connexions réussies")
+
+if __name__ == "__main__":
+    main()
