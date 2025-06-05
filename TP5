@@ -1,0 +1,80 @@
+import psutil
+import time
+import os
+import platform
+from datetime import datetime
+
+def clear_screen():
+    os.system('cls' if platform.system() == 'Windows' else 'clear')
+
+def format_bytes(bytes_val):
+    for unit in ['B', 'KB', 'MB', 'GB', 'TB']:
+        if bytes_val < 1024:
+            return f"{bytes_val:.2f} {unit}"
+        bytes_val /= 1024
+    return f"{bytes_val:.2f} TB"
+
+def display_dashboard():
+    try:
+        while True:
+            clear_screen()
+            print("="*30)
+            print(f" Tableau de bord système - {datetime.now().strftime('%H:%M:%S')} ")
+            print("="*30)
+
+            # CPU
+            print("\n[CPU]")
+            cpu_percentages = psutil.cpu_percent(percpu=True)
+            for i, percent in enumerate(cpu_percentages):
+                bar = "|" * int(percent // 5)
+                print(f" - CPU {i}: {percent:5.1f}% [{bar:<20}]")
+            print(f" - Total: {psutil.cpu_percent():5.1f}%")
+
+            # Mémoire
+            print("\n[RAM]")
+            mem = psutil.virtual_memory()
+            print(f" - Totale : {format_bytes(mem.total)}")
+            print(f" - Utilisée: {format_bytes(mem.used)}")
+            print(f" - Libre   : {format_bytes(mem.available)}")
+
+            # Disque
+            print("\n[Disques]")
+            for part in psutil.disk_partitions():
+                try:
+                    usage = psutil.disk_usage(part.mountpoint)
+                    print(f" - {part.device} ({part.mountpoint}): {usage.percent}% utilisé")
+                except PermissionError:
+                    continue
+
+            # Réseau
+            print("\n[Réseau]")
+            net = psutil.net_io_counters()
+            print(f" - Envoyés   : {format_bytes(net.bytes_sent)}")
+            print(f" - Reçus     : {format_bytes(net.bytes_recv)}")
+            print(f" - Paquets envoyés : {net.packets_sent}")
+            print(f" - Paquets reçus   : {net.packets_recv}")
+
+            # Interfaces réseau
+            print("\n[Interfaces]")
+            net_if = psutil.net_io_counters(pernic=True)
+            for iface, stats in net_if.items():
+                print(f" - {iface}: {format_bytes(stats.bytes_sent)} envoyés, {format_bytes(stats.bytes_recv)} reçus")
+
+            # Bonus : température CPU (si supportée)
+            try:
+                temps = psutil.sensors_temperatures()
+                if 'coretemp' in temps:
+                    print("\n[Températures]")
+                    for entry in temps['coretemp']:
+                        print(f" - {entry.label or 'CPU'}: {entry.current} °C")
+            except Exception:
+                pass
+
+            print("\nAppuyez sur Ctrl+C ou tapez 'quit' pour quitter.")
+            time.sleep(5)
+
+    except KeyboardInterrupt:
+        print("\nFin du tableau de bord. À bientôt !")
+
+if __name__ == "__main__":
+    display_dashboard()
