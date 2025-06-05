@@ -1,0 +1,66 @@
+import socket
+import argparse
+import csv
+from concurrent.futures import ThreadPoolExecutor, as_completed
+
+def scan_port(ip, port, timeout=1):
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.settimeout(timeout)
+            result = s.connect_ex((ip, port))
+            return port, result == 0
+    except Exception:
+        return port, False
+
+def scan_ports(ip, start_port, end_port, verbose=False, threads=10):
+    open_ports = []
+    all_results = []
+
+    with ThreadPoolExecutor(max_workers=threads) as executor:
+        futures = [executor.submit(scan_port, ip, port) for port in range(start_port, end_port + 1)]
+        for future in as_completed(futures):
+            port, is_open = future.result()
+            all_results.append((port, is_open))
+            if is_open:
+                open_ports.append(port)
+            elif verbose:
+                print(f"Port {port} : fermé")
+
+    return open_ports, all_results
+
+def save_to_csv(filename, data):
+    with open(filename, mode='w', newline='') as file:
+        writer = csv.writer(file)
+        writer.writerow(['Port', 'Statut'])
+        for port, status in data:
+            writer.writerow([port, 'ouvert' if status else 'fermé'])
+
+def main():
+    parser = argparse.ArgumentParser(description="Mini scanner de ports TCP")
+    parser.add_argument('--ip', required=True, help="Adresse IP cible")
+    parser.add_argument('--start-port', type=int, default=1, help="Port de début")
+    parser.add_argument('--end-port', type=int, default=1024, help="Port de fin")
+    parser.add_argument('--verbose', action='store_true', help="Afficher aussi les ports fermés")
+    parser.add_argument('--output', help="Exporter les résultats vers un fichier CSV")
+
+    args = parser.parse_args()
+
+    try:
+        print(f"Scan de {args.ip} de {args.start_port} à {args.end_port}...")
+        open_ports, all_results = scan_ports(args.ip, args.start_port, args.end_port, args.verbose)
+
+        print("\nPorts ouverts détectés :")
+        for port in sorted(open_ports):
+            print(f"Port {port} : ouvert")
+
+        if args.output:
+            save_to_csv(args.output, all_results)
+            print(f"\nRésultats enregistrés dans {args.output}")
+
+    except socket.gaierror:
+        print("Erreur : Adresse IP invalide.")
+    except Exception as e:
+        print(f"Erreur inattendue : {e}")
+
+if __name__ == '__main__':
+    main()
